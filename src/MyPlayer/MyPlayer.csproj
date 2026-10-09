@@ -26,4 +26,11 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Default mpv.conf / input.conf shipped inside the exe, written to
+       %APPDATA%\MyPlayer\ on first run. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Defaults\mpv.conf" />
+    <EmbeddedResource Include="Defaults\input.conf" />
+  </ItemGroup>
+
 </Project>
