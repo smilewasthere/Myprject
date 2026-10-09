@@ -1,0 +1,14 @@
+# .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+
+# Native mpv engine binaries (fetch with scripts/fetch-mpv.ps1)
+native/win-x64/*.dll
+
+# Build artifacts
+artifacts/
+publish/

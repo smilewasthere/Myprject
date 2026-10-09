@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MyPlayer/MyPlayer.csproj" />
+  </Folder>
+</Solution>
