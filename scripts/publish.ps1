@@ -1,7 +1,9 @@
-# publish.ps1 — Build a release package for MPLC (64-bit only).
+# publish.ps1 — Build release artifacts for MPLC (64-bit only).
 #
-# Produces a self-contained, single-file MPLC.exe plus the mpv engine DLL
-# under dist/win-x64/, ready to upload to GitHub Releases.
+# Produces, under dist/:
+#   MPLC-<version>-win-x64.zip        portable zip (extract & run MPLC.exe)
+#   MPLC-Setup-<version>.exe          installer (install/uninstall) — if Inno
+#                                     Setup is installed (best-effort)
 #
 # Why 64-bit only: the mpv engine this app links (shinchiro/mpv-winbuild,
 # libmpv-2.dll) ships no 32-bit build, and Windows 11 is 64-bit-only.
@@ -31,15 +33,11 @@ try {
     $publish = Join-Path $repo "$OutDir\$Rid\publish"
     if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
 
-    Write-Host "Publishing MPLC ($Rid, self-contained single-file)..." -ForegroundColor Cyan
+    # Self-contained FOLDER publish (not single-file): MPLC loads libmpv-2.dll
+    # via P/Invoke, which is unreliable from a single-file bundle.
+    Write-Host "Publishing MPLC ($Rid, self-contained folder)..." -ForegroundColor Cyan
     dotnet publish "src\MyPlayer\MyPlayer.csproj" `
-        -c $Configuration `
-        -r $Rid `
-        --self-contained true `
-        -p:PublishSingleFile=true `
-        -p:IncludeNativeLibrariesForSelfExtract=true `
-        -p:EnableCompressionInSingleFile=true `
-        -o $publish
+        -c $Configuration -r $Rid --self-contained true -o $publish
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)" }
 
     # The mpv engine DLL must sit next to the exe (P/Invoke loads it by name).
@@ -49,20 +47,30 @@ try {
         Select-String -Pattern '<Version>(.*?)</Version>').Matches.Groups[1].Value
     if (-not $version) { $version = "1.0.0" }
 
-    $stage = Join-Path $repo "$OutDir\$Rid\MPLC-$version-$Rid"
-    if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-    New-Item -ItemType Directory -Path $stage | Out-Null
-    Get-ChildItem $publish | Copy-Item -Destination $stage -Recurse
-
+    # Portable zip
     $zip = Join-Path $repo "$OutDir\MPLC-$version-$Rid.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
-    Compress-Archive -Path "$stage\*" -DestinationPath $zip
+    Compress-Archive -Path "$publish\*" -DestinationPath $zip
+    Write-Host "Built portable zip: $zip" -ForegroundColor Green
+
+    # Installer (Inno Setup) — best-effort; skip silently if not installed.
+    $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+    if (Test-Path $iscc) {
+        Write-Host "Compiling installer with Inno Setup..." -ForegroundColor Cyan
+        & $iscc "/DSourceDir=$repo" "/DPublishDir=$publish" "/DAppVersion=$version" `
+                "$repo\installer\mplc.iss"
+        if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed ($LASTEXITCODE)" }
+        Write-Host "Built installer: $(Join-Path $repo "$OutDir\MPLC-Setup-$version.exe")" -ForegroundColor Green
+    } else {
+        Write-Host "Inno Setup not found — skipping installer build." -ForegroundColor Yellow
+        Write-Host "Install it with:  choco install innosetup -y" -ForegroundColor Yellow
+    }
 
     Write-Host ""
-    Write-Host "Done. Upload this to GitHub Releases:" -ForegroundColor Green
+    Write-Host "Upload these to GitHub Releases (or push a v$version tag):" -ForegroundColor Green
     Write-Host "  $zip" -ForegroundColor Green
-    Write-Host "(portable zip — extract anywhere and run MPLC.exe)" -ForegroundColor DarkGray
 }
 finally {
     Pop-Location
 }
+

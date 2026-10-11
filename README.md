@@ -6,6 +6,24 @@ VLC-like interface, written in C# / WPF (.NET 10).
 
 > **Name:** MPLC ("MPV + VLC"). Personal project — not affiliated with mpv or VLC.
 
+## Download & install (for users)
+
+Grab the latest installer from the **[Releases](../../releases)** page:
+
+1. Download **`MPLC-Setup-<version>.exe`**.
+2. Double-click it and follow the installer (Next → Install).
+3. Launch **MPLC** from the Start Menu or Desktop shortcut.
+
+**Uninstall** like any normal program: **Settings → Apps → Installed apps → MPLC → Uninstall**
+(or **Control Panel → Programs and Features**). This removes MPLC completely.
+
+> Prefer not to install? Download **`MPLC-<version>-win-x64.zip`** instead, extract it
+> anywhere, and run `MPLC.exe`. No install, no uninstall entry — just delete the folder.
+
+> **64-bit only.** MPLC links the mpv engine (shinchiro/mpv-winbuild, `libmpv-2.dll`),
+> which publishes no 32-bit build, and Windows 11 is 64-bit-only — so there is no
+> 32-bit download.
+
 ## Features
 
 - VLC-style dark interface: menu bar, toolbar, right-click track menus
@@ -41,22 +59,23 @@ automatically. It is git-ignored; re-run the fetch script on a fresh clone.
 ## Making a release package (64-bit)
 
 ```powershell
-# Produces dist\MPLC-<version>-win-x64.zip (portable: extract & run MPLC.exe)
+# Produces under dist\:
+#   MPLC-<version>-win-x64.zip    portable zip
+#   MPLC-Setup-<version>.exe      installer (needs Inno Setup installed)
 powershell -ExecutionPolicy Bypass -File scripts\publish.ps1
 ```
 
-A GitHub Actions workflow (`.github/workflows/release.yml`) builds the same
-package automatically and attaches it to a GitHub Release when you push a
-version tag:
+The installer is built with [Inno Setup](https://jrsoftware.org/isinfo.php)
+(`installer\mplc.iss`). If you don't have it: `choco install innosetup -y`
+(otherwise `publish.ps1` skips the installer and builds just the zip).
+
+A GitHub Actions workflow (`.github/workflows/release.yml`) builds **both**
+automatically and attaches them to a GitHub Release when you push a version tag:
 
 ```powershell
 git tag v1.0.0
 git push origin v1.0.0
 ```
-
-> **64-bit only.** The mpv engine MPLC links (shinchiro/mpv-winbuild, `libmpv-2.dll`)
-> publishes no 32-bit build, and Windows 11 is 64-bit-only — so there is no
-> 32-bit download.
 
 ## App icon
 
@@ -80,8 +99,26 @@ python scripts\make-icon.py
 
 ```
 scripts/fetch-mpv.ps1   downloads libmpv-2.dll into native/win-x64/
-scripts/publish.ps1     builds dist\MPLC-<version>-win-x64.zip
+scripts/publish.ps1     builds the zip + installer under dist/
 scripts/make-icon.py    regenerates the app icon (MPLC.ico)
+installer/mplc.iss      Inno Setup script (install/uninstall installer)
 native/win-x64/         mpv engine binaries (git-ignored)
 src/MyPlayer/           the WPF application (ships as MPLC.exe)
 ```
+
+## Contributors
+
+- **[smilewasthere](https://github.com/smilewasthere)** — creator & maintainer
+
+This is a personal project. Contributions aren't actively sought, but issues
+and ideas are welcome via [Issues](../../issues).
+
+## Credits & license
+
+- **mpv / libmpv** — the video engine. GPL-2.0-or-later / LGPL. <https://mpv.io>
+- **libass** — subtitle typesetting, used through mpv. ISC.
+- **HanumanInstitute.LibMpv** — .NET binding for libmpv. MIT.
+- **Inno Setup** — builds the Windows installer. Freeware (JR Software).
+- App icon and MPLC source code — personal use; no third-party assets.
+
+MPLC is not affiliated with or endorsed by the mpv or VideoLAN (VLC) projects.
