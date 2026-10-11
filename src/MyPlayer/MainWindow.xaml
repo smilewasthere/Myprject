@@ -220,6 +220,8 @@
             <MenuItem x:Name="MediaMenu" Header="Media" SubmenuOpened="TrackMenu_SubmenuOpened">
                 <MenuItem x:Name="OpenFileItem" Header="Open File…" InputGestureText="Ctrl+O"
                           Click="Open_Click" />
+                <MenuItem x:Name="OpenNetworkItem" Header="Open Network Stream…" InputGestureText="Ctrl+N"
+                          Click="OpenNetwork_Click" />
                 <Separator />
                 <MenuItem x:Name="ExitItem" Header="Exit" Click="Exit_Click" />
             </MenuItem>

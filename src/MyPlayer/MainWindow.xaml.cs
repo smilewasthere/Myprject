@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private bool _menuOpen;      // a menu/context menu is open — hooks stand down
     private WindowGeom? _savedGeom;
     private long? _contextMenuAt; // ticks of last hook-fired context menu (de-dup)
+    private readonly System.Collections.Generic.List<string> _recentUrls = new();
 
     public MainWindow()
     {
@@ -180,6 +181,25 @@ public partial class MainWindow : Window
 
     private void Open_Click(object sender, RoutedEventArgs e) => OpenDialog();
 
+    private void OpenNetwork_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenStream(_recentUrls) { Owner = this };
+        if (dlg.ShowDialog() == true && dlg.SelectedUrl is not null)
+        {
+            RememberUrl(dlg.SelectedUrl);
+            OpenPath(dlg.SelectedUrl);
+        }
+    }
+
+    private void RememberUrl(string url)
+    {
+        _recentUrls.RemoveAll(u => string.Equals(u, url, StringComparison.OrdinalIgnoreCase));
+        _recentUrls.Insert(0, url);
+        while (_recentUrls.Count > 10)
+            _recentUrls.RemoveAt(_recentUrls.Count - 1);
+    }
+
+
     private void OpenDialog()
     {
         var dlg = new OpenFileDialog
@@ -296,8 +316,8 @@ public partial class MainWindow : Window
                 Open_Click(this, new RoutedEventArgs());
                 break;
             case Key.N when ctrl:
-                // "Open Network Stream" arrives in Phase 5 — act as no-op for now.
-                return false;
+                OpenNetwork_Click(this, new RoutedEventArgs());
+                break;
             case Key.Space:
                 _mpv.RunCommandString("cycle pause");
                 break;

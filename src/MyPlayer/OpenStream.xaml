@@ -1,0 +1,44 @@
+<Window x:Class="MyPlayer.OpenStream"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Open Network Stream" Height="220" Width="520"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#1E1E1E" Foreground="#DDDDDD"
+        FontFamily="Segoe UI" FontSize="13">
+    <Window.Resources>
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="Padding" Value="0,0,0,2"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#333337"/>
+            <Setter Property="Foreground" Value="#DDDDDD"/>
+            <Setter Property="BorderBrush" Value="#55555C"/>
+            <Setter Property="Padding" Value="16,5"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="MinWidth" Value="90"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="16">
+        <TextBlock Foreground="#CCCCCC" TextWrapping="Wrap" Margin="0,0,0,10">
+            Paste a direct video URL (mp4, m3u8/HLS, webm, direct stream). For
+            YouTube/Twitch and other site links, Phase 6 will add yt-dlp support.
+        </TextBlock>
+
+        <Label Content="URL:"/>
+        <ComboBox x:Name="UrlBox" IsEditable="True" Margin="0,0,0,12">
+            <ComboBox.ItemContainerStyle>
+                <Style TargetType="ComboBoxItem">
+                    <Setter Property="Foreground" Value="#DDDDDD"/>
+                    <Setter Property="Background" Value="#2D2D30"/>
+                </Style>
+            </ComboBox.ItemContainerStyle>
+        </ComboBox>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" IsCancel="True"/>
+            <Button Content="Play" IsDefault="True" Click="Play_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
