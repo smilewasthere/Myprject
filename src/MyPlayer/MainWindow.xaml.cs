@@ -610,6 +610,10 @@ public partial class MainWindow : Window
             AddClickItem(subDelay, "Reset", () => _mpv?.RunCommandString("set sub-delay 0"));
             menu.Items.Add(subDelay);
 
+            var subSettings = new System.Windows.Controls.MenuItem { Header = "Subtitle Settings…" };
+            subSettings.Click += (_, _) => OpenSubtitleSettings();
+            menu.Items.Add(subSettings);
+
             var audioDelay = new System.Windows.Controls.MenuItem { Header = "Audio Delay" };
             AddClickItem(audioDelay, "+0.1s", () => _mpv?.RunCommandString("add audio-delay 0.1"));
             AddClickItem(audioDelay, "−0.1s", () => _mpv?.RunCommandString("add audio-delay -0.1"));
@@ -732,6 +736,16 @@ public partial class MainWindow : Window
 
     private void SubDelayReset_Click(object sender, RoutedEventArgs e)
         => _mpv?.RunCommandString("set sub-delay 0");
+
+    private void SubtitleSettings_Click(object sender, RoutedEventArgs e)
+        => OpenSubtitleSettings();
+
+    private void OpenSubtitleSettings()
+    {
+        if (_mpv is null) return;
+        var dlg = new SubtitleSettings(_mpv) { Owner = this };
+        dlg.ShowDialog();
+    }
 
     private void About_Click(object sender, RoutedEventArgs e)
     {

@@ -249,6 +249,8 @@
                 <MenuItem Header="Increase delay (+0.1s)" Click="SubDelayPlus_Click" />
                 <MenuItem Header="Decrease delay (−0.1s)" Click="SubDelayMinus_Click" />
                 <MenuItem Header="Reset delay" Click="SubDelayReset_Click" />
+                <Separator />
+                <MenuItem Header="Subtitle Settings…" Click="SubtitleSettings_Click" />
             </MenuItem>
             <MenuItem x:Name="VideoMenu" Header="Video">
                 <MenuItem x:Name="FullscreenItem" Header="Fullscreen" InputGestureText="F"
