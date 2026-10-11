@@ -26,6 +26,9 @@ public partial class MainWindow : Window
     private WindowGeom? _savedGeom;
     private long? _contextMenuAt; // ticks of last hook-fired context menu (de-dup)
     private readonly System.Collections.Generic.List<string> _recentUrls = new();
+    private ResumeStore? _resume;
+    private double? _pendingResumeAt;   // seek target applied once file is loaded
+    private DateTime _lastResumeSave = DateTime.MinValue;
 
     public MainWindow()
     {
@@ -63,6 +66,7 @@ public partial class MainWindow : Window
             return;
 
         ConfigManager.EnsureDefaults();
+        _resume = new ResumeStore(System.IO.Path.Combine(ConfigManager.ConfigDir, "resume.json"));
 
         try
         {
@@ -93,6 +97,14 @@ public partial class MainWindow : Window
     {
         ExitFullscreen(silent: true);
         SaveWindowGeometry();
+        // Persist the final playback position before the engine goes away.
+        if (_mpv is not null && _lastPath is not null && !_stopped)
+        {
+            var time = GetDouble("time-pos");
+            var dur = GetDouble("duration");
+            if (time is not null && dur is > 0)
+                _resume?.Record(_lastPath, time.Value, dur.Value);
+        }
         _timer?.Stop();
         _hooks?.Dispose();
         _hooks = null;
@@ -110,6 +122,23 @@ public partial class MainWindow : Window
         var duration = GetDouble("duration");
         var time = GetDouble("time-pos");
         _duration = duration;
+
+        // Apply a resume seek once the file is loaded and near the start.
+        if (_pendingResumeAt is double resumeTo && duration is > 0 && time is not null
+            && time < 1.0 && resumeTo < duration)
+        {
+            _mpv.RunCommandString($"seek {resumeTo.ToString(System.Globalization.CultureInfo.InvariantCulture)} absolute");
+            _mpv.RunCommandString($"show-text \"Resumed at {FormatTime(resumeTo)}\"");
+            _pendingResumeAt = null;
+        }
+
+        // Throttled save of the current position (every ~5s) for local files.
+        if (_lastPath is not null && duration is > 0 && time is not null && !_stopped
+            && (DateTime.UtcNow - _lastResumeSave).TotalSeconds > 5)
+        {
+            _lastResumeSave = DateTime.UtcNow;
+            _resume?.Record(_lastPath, time.Value, duration.Value);
+        }
 
         if (duration is > 0 && time is not null)
         {
@@ -219,6 +248,7 @@ public partial class MainWindow : Window
         _lastPath = path;
         _stopped = false;
         ResetTrackBase(); // new file → re-probe track-list indexing
+        _pendingResumeAt = _resume?.Get(path); // applied in Timer_Tick once duration is known
         _mpv.LoadFile(path, append: false, appendPlay: false, extraArgs: null!).Invoke();
         PlayButton.IsEnabled = true;
         StopButton.IsEnabled = true;
