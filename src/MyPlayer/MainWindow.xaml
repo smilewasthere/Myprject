@@ -239,9 +239,11 @@
             </MenuItem>
             <MenuItem x:Name="AudioMenu" Header="Audio" SubmenuOpened="TrackMenu_SubmenuOpened">
                 <MenuItem x:Name="AudioTrackMenu" Header="Audio Track" />
+                <MenuItem x:Name="AudioDeviceMenu" Header="Audio Device" />
                 <Separator />
                 <MenuItem Header="Increase delay (+0.1s)" Click="AudioDelayPlus_Click" />
                 <MenuItem Header="Decrease delay (−0.1s)" Click="AudioDelayMinus_Click" />
+                <MenuItem Header="Reset delay" Click="AudioDelayReset_Click" />
             </MenuItem>
             <MenuItem x:Name="SubtitleMenu" Header="Subtitle" SubmenuOpened="TrackMenu_SubmenuOpened">
                 <MenuItem x:Name="SubtitleTrackMenu" Header="Subtitle Track" />

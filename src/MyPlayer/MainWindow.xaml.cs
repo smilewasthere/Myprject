@@ -508,6 +508,82 @@ public partial class MainWindow : Window
             return;
         RebuildTrackSubmenu(AudioTrackMenu, "audio", SelectAudioTrack);
         RebuildTrackSubmenu(SubtitleTrackMenu, "sub", SelectSubtitleTrack);
+        RebuildAudioDeviceMenu();
+    }
+
+    /// <summary>
+    /// Populates <paramref name="host"/> with mpv's audio output devices
+    /// (headphone/speaker/HDMI etc.) and marks the active one. Selecting one
+    /// runs `set audio-device &lt;name&gt;`, which is exactly what mpv.conf's
+    /// `audio-device=` line does. Shared by the menu bar and right-click menu.
+    /// </summary>
+    private void BuildAudioDeviceItems(System.Windows.Controls.MenuItem host)
+    {
+        host.Items.Clear();
+        if (_mpv is null)
+            return;
+
+        IList<HanumanInstitute.LibMpv.AudioDeviceInfo>? devices = null;
+        try
+        {
+            devices = _mpv.AudioDeviceList.Get();
+        }
+        catch
+        {
+            // Backends that don't expose a device list (e.g. wasapi quirks)
+            // simply fall through to the "default" entry below.
+        }
+
+        var current = SafeString("audio-device");
+
+        // "auto" is mpv's default-selection value and always available.
+        var auto = new System.Windows.Controls.MenuItem
+        {
+            Header = "auto (system default)",
+            IsCheckable = true,
+            IsChecked = current is "auto" or "" or null
+        };
+        auto.Click += (_, _) => _mpv.RunCommandString("set audio-device auto");
+        host.Items.Add(auto);
+
+        if (devices is not null && devices.Count > 0)
+            host.Items.Add(new System.Windows.Controls.Separator());
+
+        if (devices is not null)
+        {
+            foreach (var d in devices)
+            {
+                var label = string.IsNullOrEmpty(d.Description) ? d.Name : d.Description;
+                var item = new System.Windows.Controls.MenuItem
+                {
+                    Header = label,
+                    IsCheckable = true,
+                    IsChecked = string.Equals(current, d.Name, StringComparison.Ordinal),
+                    Tag = d.Name,
+                    ToolTip = d.Name
+                };
+                item.Click += (_, _) =>
+                    _mpv.RunCommandString($"set audio-device \"{d.Name}\"");
+                host.Items.Add(item);
+            }
+        }
+
+        if (devices is null || devices.Count == 0)
+        {
+            host.Items.Add(new System.Windows.Controls.MenuItem
+            {
+                Header = "(no device list available)",
+                IsEnabled = false
+            });
+        }
+    }
+
+    private void RebuildAudioDeviceMenu() => BuildAudioDeviceItems(AudioDeviceMenu);
+
+    private string? SafeString(string option)
+    {
+        try { return _mpv?.GetPropertyString(option); }
+        catch { return null; }
     }
 
     private void RebuildTrackSubmenu(
@@ -617,7 +693,13 @@ public partial class MainWindow : Window
             var audioDelay = new System.Windows.Controls.MenuItem { Header = "Audio Delay" };
             AddClickItem(audioDelay, "+0.1s", () => _mpv?.RunCommandString("add audio-delay 0.1"));
             AddClickItem(audioDelay, "−0.1s", () => _mpv?.RunCommandString("add audio-delay -0.1"));
+            AddClickItem(audioDelay, "Reset", () => _mpv?.RunCommandString("set audio-delay 0"));
             menu.Items.Add(audioDelay);
+
+            var audioDevice = new System.Windows.Controls.MenuItem { Header = "Audio Device" };
+            BuildAudioDeviceItems(audioDevice);
+            menu.Items.Add(audioDevice);
+
 
             var speed = new System.Windows.Controls.MenuItem { Header = "Speed" };
             foreach (var (label, value) in SpeedPresets())
@@ -727,6 +809,9 @@ public partial class MainWindow : Window
 
     private void AudioDelayMinus_Click(object sender, RoutedEventArgs e)
         => _mpv?.RunCommandString("add audio-delay -0.1");
+
+    private void AudioDelayReset_Click(object sender, RoutedEventArgs e)
+        => _mpv?.RunCommandString("set audio-delay 0");
 
     private void SubDelayPlus_Click(object sender, RoutedEventArgs e)
         => _mpv?.RunCommandString("add sub-delay 0.1");
