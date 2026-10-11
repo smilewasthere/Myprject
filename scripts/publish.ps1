@@ -1,12 +1,11 @@
-# publish.ps1 — Build release artifacts for MPLC (64-bit only).
+# publish.ps1 — Build the release installer for MPLC (64-bit only).
 #
-# Produces, under dist/:
-#   MPLC-<version>-win-x64.zip        portable zip (extract & run MPLC.exe)
-#   MPLC-Setup-<version>.exe          installer (install/uninstall) — if Inno
-#                                     Setup is installed (best-effort)
+# Produces:  dist\MPLC-Setup-<version>.exe   (install / uninstall installer)
 #
 # Why 64-bit only: the mpv engine this app links (shinchiro/mpv-winbuild,
 # libmpv-2.dll) ships no 32-bit build, and Windows 11 is 64-bit-only.
+#
+# Requires Inno Setup for the installer step:  choco install innosetup -y
 #
 # Usage (from repo root):
 #   powershell -ExecutionPolicy Bypass -File scripts\fetch-mpv.ps1   # once, for libmpv-2.dll
@@ -47,28 +46,22 @@ try {
         Select-String -Pattern '<Version>(.*?)</Version>').Matches.Groups[1].Value
     if (-not $version) { $version = "1.0.0" }
 
-    # Portable zip
-    $zip = Join-Path $repo "$OutDir\MPLC-$version-$Rid.zip"
-    if (Test-Path $zip) { Remove-Item $zip -Force }
-    Compress-Archive -Path "$publish\*" -DestinationPath $zip
-    Write-Host "Built portable zip: $zip" -ForegroundColor Green
-
-    # Installer (Inno Setup) — best-effort; skip silently if not installed.
+    # Installer (Inno Setup) — the single .exe users download.
     $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-    if (Test-Path $iscc) {
-        Write-Host "Compiling installer with Inno Setup..." -ForegroundColor Cyan
-        & $iscc "/DSourceDir=$repo" "/DPublishDir=$publish" "/DAppVersion=$version" `
-                "$repo\installer\mplc.iss"
-        if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed ($LASTEXITCODE)" }
-        Write-Host "Built installer: $(Join-Path $repo "$OutDir\MPLC-Setup-$version.exe")" -ForegroundColor Green
-    } else {
-        Write-Host "Inno Setup not found — skipping installer build." -ForegroundColor Yellow
-        Write-Host "Install it with:  choco install innosetup -y" -ForegroundColor Yellow
+    if (-not (Test-Path $iscc)) {
+        throw "Inno Setup not found at '$iscc'. Install it with: choco install innosetup -y"
     }
+    Write-Host "Compiling installer with Inno Setup..." -ForegroundColor Cyan
+    & $iscc "/DSourceDir=$repo" "/DPublishDir=$publish" "/DAppVersion=$version" `
+            "$repo\installer\mplc.iss"
+    if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed ($LASTEXITCODE)" }
 
+    $setup = Join-Path $repo "$OutDir\MPLC-Setup-$version.exe"
     Write-Host ""
-    Write-Host "Upload these to GitHub Releases (or push a v$version tag):" -ForegroundColor Green
-    Write-Host "  $zip" -ForegroundColor Green
+    Write-Host "Built installer:" -ForegroundColor Green
+    Write-Host "  $setup" -ForegroundColor Green
+    Write-Host "Double-click to install; uninstall via Add/Remove Programs." -ForegroundColor DarkGray
+    Write-Host "(Or push tag v$version to build & attach it to a GitHub Release.)" -ForegroundColor DarkGray
 }
 finally {
     Pop-Location

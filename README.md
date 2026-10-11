@@ -10,15 +10,14 @@ VLC-like interface, written in C# / WPF (.NET 10).
 
 Grab the latest installer from the **[Releases](../../releases)** page:
 
-1. Download **`MPLC-Setup-<version>.exe`**.
+1. Download **`MPLC-Setup-<version>.exe`** (the single file under "Assets").
 2. Double-click it and follow the installer (Next → Install).
 3. Launch **MPLC** from the Start Menu or Desktop shortcut.
 
 **Uninstall** like any normal program: **Settings → Apps → Installed apps → MPLC → Uninstall**
 (or **Control Panel → Programs and Features**). This removes MPLC completely.
 
-> Prefer not to install? Download **`MPLC-<version>-win-x64.zip`** instead, extract it
-> anywhere, and run `MPLC.exe`. No install, no uninstall entry — just delete the folder.
+> The same page also offers **Source code (zip / tar.gz)** if you'd rather build it yourself.
 
 > **64-bit only.** MPLC links the mpv engine (shinchiro/mpv-winbuild, `libmpv-2.dll`),
 > which publishes no 32-bit build, and Windows 11 is 64-bit-only — so there is no
@@ -56,26 +55,27 @@ dotnet run --project src\MyPlayer
 `libmpv-2.dll` is placed in `native\win-x64\` and copied to the build output
 automatically. It is git-ignored; re-run the fetch script on a fresh clone.
 
-## Making a release package (64-bit)
+## Making a release (64-bit)
 
 ```powershell
-# Produces under dist\:
-#   MPLC-<version>-win-x64.zip    portable zip
-#   MPLC-Setup-<version>.exe      installer (needs Inno Setup installed)
+# Builds the single installer:  dist\MPLC-Setup-<version>.exe
 powershell -ExecutionPolicy Bypass -File scripts\publish.ps1
 ```
 
 The installer is built with [Inno Setup](https://jrsoftware.org/isinfo.php)
-(`installer\mplc.iss`). If you don't have it: `choco install innosetup -y`
-(otherwise `publish.ps1` skips the installer and builds just the zip).
+(`installer\mplc.iss`). If you don't have it: `choco install innosetup -y`.
 
-A GitHub Actions workflow (`.github/workflows/release.yml`) builds **both**
-automatically and attaches them to a GitHub Release when you push a version tag:
+A GitHub Actions workflow (`.github/workflows/release.yml`) builds the same
+installer automatically and attaches it to a GitHub Release when you push a
+version tag:
 
 ```powershell
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+The release page then shows **one `.exe`** (`MPLC-Setup-1.0.0.exe`) plus GitHub's
+automatic **Source code (zip / tar.gz)** links.
 
 ## App icon
 
