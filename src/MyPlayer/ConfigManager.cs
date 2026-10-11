@@ -4,14 +4,14 @@ using System.Reflection;
 namespace MyPlayer;
 
 /// <summary>
-/// Manages the mpv configuration directory (%APPDATA%\MyPlayer).
+/// Manages the mpv configuration directory (%APPDATA%\MPLC).
 /// On first run, writes the default mpv.conf / input.conf shipped inside the exe.
 /// The files are plain mpv config files — edit them like any mpv setup.
 /// </summary>
 public static class ConfigManager
 {
     public static string ConfigDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MyPlayer");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MPLC");
 
     public static string MpvConfPath => Path.Combine(ConfigDir, "mpv.conf");
     public static string InputConfPath => Path.Combine(ConfigDir, "input.conf");

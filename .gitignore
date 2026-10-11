@@ -12,3 +12,7 @@ native/win-x64/*.dll
 # Build artifacts
 artifacts/
 publish/
+dist/
+
+# WPF temporary project files
+*_wpftmp.csproj

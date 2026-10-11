@@ -7,8 +7,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <RootNamespace>MyPlayer</RootNamespace>
-    <AssemblyName>MyPlayer</AssemblyName>
-    <ApplicationTitle>MyPlayer</ApplicationTitle>
+    <AssemblyName>MPLC</AssemblyName>
+    <ApplicationTitle>MPLC</ApplicationTitle>
+    <Version>1.0.0</Version>
+    <Product>MPLC</Product>
+    <Company>personal</Company>
+    <ApplicationIcon>MPLC.ico</ApplicationIcon>
+    <Copyright>Personal use — powered by mpv (libmpv)</Copyright>
     <!-- Allows compiling this Windows-only WPF project on Linux (dev environment).
          Running the app still requires Windows. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
@@ -25,6 +30,15 @@
           Link="libmpv-2.dll"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Release packaging (see scripts/publish.ps1 + .github/workflows/release.yml):
+       self-contained single exe for win-x64, with native libs extracted beside it. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)'!=''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
 
   <!-- Default mpv.conf / input.conf shipped inside the exe, written to
        %APPDATA%\MyPlayer\ on first run. -->

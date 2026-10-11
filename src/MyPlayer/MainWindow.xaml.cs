@@ -88,13 +88,13 @@ public partial class MainWindow : Window
                 "libmpv-2.dll was not found.\n\n" +
                 "Run this once from the repo folder (see README):\n" +
                 "powershell -ExecutionPolicy Bypass -File scripts\\fetch-mpv.ps1",
-                "MyPlayer", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "MPLC", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         catch (Exception ex)
         {
             MessageBox.Show("Failed to initialize the mpv engine:\n\n" + ex.Message,
-                "MyPlayer", MessageBoxButton.OK, MessageBoxImage.Error);
+                "MPLC", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -187,8 +187,8 @@ public partial class MainWindow : Window
         // Window title: media title first, VLC-style
         var title = GetString("media-title");
         Title = string.IsNullOrWhiteSpace(title) || title == "No file"
-            ? "MyPlayer"
-            : $"{title} - MyPlayer";
+            ? "MPLC"
+            : $"{title} - MPLC";
     }
 
     // ---- mpv helpers -----------------------------------------------------
@@ -912,8 +912,8 @@ public partial class MainWindow : Window
     {
         var version = GetType().Assembly.GetName().Version?.ToString() ?? "1.0";
         MessageBox.Show(
-            $"MyPlayer {version}\n\nA personal mpv-powered video player with a VLC-style interface.\n\nVideo engine: libmpv (mpv {$"v{GetMpvVersion()}"})\nConfig: %APPDATA%\\MyPlayer (plain mpv.conf + input.conf)",
-            "About MyPlayer", MessageBoxButton.OK, MessageBoxImage.Information);
+            $"MPLC {version}\n\nA personal mpv-powered video player with a VLC-style interface.\n\nVideo engine: libmpv (mpv {$"v{GetMpvVersion()}"})\nConfig: %APPDATA%\\MPLC (plain mpv.conf + input.conf)",
+            "About MPLC", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private string GetMpvVersion()
