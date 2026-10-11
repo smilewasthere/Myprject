@@ -94,22 +94,181 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Dark VLC-style menus: shared by the menu bar and the context menu -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <ControlTemplate x:Key="TopLevelItemTemplate" TargetType="MenuItem">
+            <Border x:Name="Bd" Background="Transparent" Padding="10,6">
+                <ContentPresenter ContentSource="Header" />
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter TargetName="Bd" Property="Background" Value="#3D3D3D" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="TextElement.Foreground" Value="#777777" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <ControlTemplate x:Key="TopLevelHeaderTemplate" TargetType="MenuItem">
+            <Grid>
+                <Border x:Name="Bd" Background="Transparent" Padding="10,6">
+                    <ContentPresenter ContentSource="Header" />
+                </Border>
+                <Popup IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Bottom"
+                       AllowsTransparency="True" Focusable="False">
+                    <Border Background="#2D2D2D" BorderBrush="#555555" BorderThickness="1"
+                            Padding="2" SnapsToDevicePixels="True">
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter TargetName="Bd" Property="Background" Value="#3D3D3D" />
+                </Trigger>
+                <Trigger Property="IsSubmenuOpen" Value="True">
+                    <Setter TargetName="Bd" Property="Background" Value="#3D3D3D" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="TextElement.Foreground" Value="#777777" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- Dropdown items (submenus + context menu): check, label, arrow -->
+        <ControlTemplate x:Key="DropItemTemplate" TargetType="MenuItem">
+            <Grid x:Name="Bd" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="22" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" MinWidth="20" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="Check" Grid.Column="0" Text="✓" Foreground="#FF8800"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"
+                           Visibility="{TemplateBinding IsChecked, Converter={StaticResource BoolToVis}}" />
+                <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                  Margin="0,5,18,5" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="▸" Foreground="#AAAAAA" FontSize="10"
+                           VerticalAlignment="Center" Margin="0,0,8,0"
+                           Visibility="{TemplateBinding HasItems, Converter={StaticResource BoolToVis}}" />
+                <Popup x:Name="Sub" IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Right"
+                       HorizontalOffset="-2" VerticalOffset="-4"
+                       AllowsTransparency="True" Focusable="False">
+                    <Border Background="#2D2D2D" BorderBrush="#555555" BorderThickness="1"
+                            Padding="2" SnapsToDevicePixels="True">
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter TargetName="Bd" Property="Background" Value="#404040" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="TextElement.Foreground" Value="#777777" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <Style x:Key="MenuBarItemStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#DDDDDD" />
+            <Setter Property="Template" Value="{StaticResource TopLevelItemTemplate}" />
+            <Style.Triggers>
+                <Trigger Property="HasItems" Value="True">
+                    <Setter Property="Template" Value="{StaticResource TopLevelHeaderTemplate}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Applied implicitly to every dropdown item + context-menu item -->
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#DDDDDD" />
+            <Setter Property="Template" Value="{StaticResource DropItemTemplate}" />
+        </Style>
+
+        <Style TargetType="Separator">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border Height="1" Background="#4A4A4A" Margin="4,5" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="#2D2D2D" />
+            <Setter Property="BorderBrush" Value="#555555" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="2" />
+        </Style>
     </Window.Resources>
+
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" x:Name="MenuRow" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" x:Name="ToolbarRow" />
         </Grid.RowDefinitions>
 
+        <!-- VLC-style menu bar -->
+        <Menu Grid.Row="0" x:Name="MainMenu" Background="#1F1F1F" Foreground="#DDDDDD"
+              ItemContainerStyle="{StaticResource MenuBarItemStyle}">
+            <MenuItem x:Name="MediaMenu" Header="Media" SubmenuOpened="TrackMenu_SubmenuOpened">
+                <MenuItem x:Name="OpenFileItem" Header="Open File…" InputGestureText="Ctrl+O"
+                          Click="Open_Click" />
+                <Separator />
+                <MenuItem x:Name="ExitItem" Header="Exit" Click="Exit_Click" />
+            </MenuItem>
+            <MenuItem x:Name="PlaybackMenu" Header="Playback">
+                <MenuItem x:Name="PlayPauseItem" Header="Play / Pause" InputGestureText="Space"
+                          Click="PlayPause_Click" />
+                <MenuItem x:Name="StopItem" Header="Stop" Click="Stop_Click" />
+                <Separator />
+                <MenuItem x:Name="SpeedMenu" Header="Speed">
+                    <MenuItem Header="0.25× slower" Tag="0.5" Click="SpeedItem_Click" />
+                    <MenuItem Header="0.5× slower" Tag="0.75" Click="SpeedItem_Click" />
+                    <MenuItem Header="Normal (reset)" Tag="1" Click="SpeedItem_Click" />
+                    <MenuItem Header="1.25× faster" Tag="1.25" Click="SpeedItem_Click" />
+                    <MenuItem Header="1.5× faster" Tag="1.5" Click="SpeedItem_Click" />
+                    <MenuItem Header="2× faster" Tag="2" Click="SpeedItem_Click" />
+                </MenuItem>
+            </MenuItem>
+            <MenuItem x:Name="AudioMenu" Header="Audio" SubmenuOpened="TrackMenu_SubmenuOpened">
+                <MenuItem x:Name="AudioTrackMenu" Header="Audio Track" />
+                <Separator />
+                <MenuItem Header="Increase delay (+0.1s)" Click="AudioDelayPlus_Click" />
+                <MenuItem Header="Decrease delay (−0.1s)" Click="AudioDelayMinus_Click" />
+            </MenuItem>
+            <MenuItem x:Name="SubtitleMenu" Header="Subtitle" SubmenuOpened="TrackMenu_SubmenuOpened">
+                <MenuItem x:Name="SubtitleTrackMenu" Header="Subtitle Track" />
+                <Separator />
+                <MenuItem Header="Increase delay (+0.1s)" Click="SubDelayPlus_Click" />
+                <MenuItem Header="Decrease delay (−0.1s)" Click="SubDelayMinus_Click" />
+                <MenuItem Header="Reset delay" Click="SubDelayReset_Click" />
+            </MenuItem>
+            <MenuItem x:Name="VideoMenu" Header="Video">
+                <MenuItem x:Name="FullscreenItem" Header="Fullscreen" InputGestureText="F"
+                          Click="Fullscreen_Click" />
+            </MenuItem>
+            <MenuItem x:Name="HelpMenu" Header="Help">
+                <MenuItem x:Name="AboutItem" Header="About MyPlayer" Click="About_Click" />
+            </MenuItem>
+        </Menu>
+
         <!-- Video area: mpv renders into this native host -->
-        <Border Grid.Row="0" Background="#000000">
+        <Border Grid.Row="1" Background="#000000">
             <local:VideoHost x:Name="VideoHost" />
         </Border>
 
         <!-- Toolbar (thin, dark) -->
-        <Grid Grid.Row="1" x:Name="Toolbar" Background="#1F1F1F" Height="46">
+        <Grid Grid.Row="2" x:Name="Toolbar" Background="#1F1F1F" Height="46">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
@@ -123,37 +282,43 @@
             <Button Grid.Column="0" Style="{StaticResource ToolButton}" Content="Open"
                     Click="Open_Click" ToolTip="Open file (Ctrl+O)" />
 
-            <Button Grid.Column="1" x:Name="PlayButton" Style="{StaticResource IconButton}"
+            <Button Grid.Column="1" x:Name="PrevButton" Style="{StaticResource IconButton}"
+                    Content="⏮" Click="Prev_Click" IsEnabled="False"
+                    ToolTip="Previous in playlist (,)" />
+
+            <Button Grid.Column="2" x:Name="PlayButton" Style="{StaticResource IconButton}"
                     Content="▶" Click="PlayPause_Click" IsEnabled="False"
                     ToolTip="Play / Pause (Space)" />
 
-            <Button Grid.Column="2" x:Name="StopButton" Style="{StaticResource IconButton}" Content="■"
+            <Button Grid.Column="3" x:Name="StopButton" Style="{StaticResource IconButton}" Content="■"
                     Click="Stop_Click" IsEnabled="False" ToolTip="Stop" />
 
-            <TextBlock Grid.Column="3" x:Name="TimeText" Text="00:00 / 00:00"
+            <Button Grid.Column="4" x:Name="NextButton" Style="{StaticResource IconButton}"
+                    Content="⏭" Click="Next_Click" IsEnabled="False"
+                    ToolTip="Next in playlist (.)" />
+
+            <TextBlock Grid.Column="5" x:Name="TimeText" Text="00:00 / 00:00"
                        Foreground="#BBBBBB" FontFamily="Consolas" FontSize="12"
                        VerticalAlignment="Center" Margin="12,0" />
 
-            <Slider Grid.Column="4" x:Name="SeekSlider" Style="{StaticResource DarkSlider}"
+            <Slider Grid.Column="6" x:Name="SeekSlider" Style="{StaticResource DarkSlider}"
                     VerticalAlignment="Center" Margin="8,0"
                     IsEnabled="False" Minimum="0" Maximum="100"
                     MouseLeftButtonUp="SeekSlider_MouseLeftButtonUp" />
 
-            <TextBlock Grid.Column="5" x:Name="VolumeLabel" Text="100%"
+            <TextBlock Grid.Column="7" x:Name="VolumeLabel" Text="100%"
                        Foreground="#BBBBBB" FontSize="12" VerticalAlignment="Center"
                        Margin="8,0,0,0" />
 
-            <Slider Grid.Column="6" x:Name="VolumeSlider" Style="{StaticResource DarkSlider}"
+            <Slider Grid.Column="8" x:Name="VolumeSlider" Style="{StaticResource DarkSlider}"
                     Width="100" VerticalAlignment="Center" Margin="6,0"
                     Minimum="0" Maximum="300" Value="100"
                     ToolTip="Volume — goes past 100%"
                     ValueChanged="VolumeSlider_ValueChanged" />
 
-            <Button Grid.Column="7" x:Name="FullscreenButton"
+            <Button Grid.Column="9" x:Name="FullscreenButton"
                     Style="{StaticResource IconButton}" Content="⛶"
                     Click="Fullscreen_Click" ToolTip="Fullscreen (F)" />
         </Grid>
     </Grid>
 </Window>
-
-
