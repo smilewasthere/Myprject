@@ -30,11 +30,21 @@ public partial class MainWindow : Window
     private double? _pendingResumeAt;   // seek target applied once file is loaded
     private DateTime _lastResumeSave = DateTime.MinValue;
 
+    // Mirror of mpv's native playlist, kept index-aligned by only ever using
+    // replace / append / playlist-remove / playlist-clear (see README Phase 6).
+    private readonly System.Collections.ObjectModel.ObservableCollection<PlaylistItem> _playlist = new();
+
     public MainWindow()
     {
         InitializeComponent();
         // WPF sliders have no DragStarted/DragCompleted — use mouse events instead
         SeekSlider.PreviewMouseLeftButtonDown += (_, _) => _seeking = true;
+        PlaylistList.ItemsSource = _playlist;
+    }
+
+    private sealed record PlaylistItem(string Path, string Display)
+    {
+        public override string ToString() => Display;
     }
 
     // ---- lifecycle -------------------------------------------------------
@@ -161,6 +171,9 @@ public partial class MainWindow : Window
         var paused = GetBool("pause");
         PlayButton.Content = paused == true ? "▶" : "II";
 
+        // Keep the playlist highlight on mpv's current entry (auto-advance aware)
+        SyncPlaylistSelection();
+
         // Volume slider + label (skip while user is dragging)
         var volume = GetDouble("volume");
         if (volume is not null && !VolumeSlider.IsMouseCaptureWithin)
@@ -249,11 +262,14 @@ public partial class MainWindow : Window
         _stopped = false;
         ResetTrackBase(); // new file → re-probe track-list indexing
         _pendingResumeAt = _resume?.Get(path); // applied in Timer_Tick once duration is known
+        // append:false ⇒ mpv replaces its whole playlist with this single file,
+        // so mirror that here to keep our indices aligned with mpv's.
         _mpv.LoadFile(path, append: false, appendPlay: false, extraArgs: null!).Invoke();
         PlayButton.IsEnabled = true;
         StopButton.IsEnabled = true;
         PrevButton.IsEnabled = true;
         NextButton.IsEnabled = true;
+        SetPlaylistSingle(path);
     }
 
     private void PlayPause_Click(object sender, RoutedEventArgs e) => TogglePlay();
@@ -427,7 +443,13 @@ public partial class MainWindow : Window
     private void Window_Drop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } files)
+        {
+            // First file replaces the playlist; the rest are appended, so a
+            // multi-file drop builds a queue in the order Explorer sorted them.
             OpenPath(files[0]);
+            for (var i = 1; i < files.Length; i++)
+                AppendToPlaylist(files[i]);
+        }
     }
 
     private sealed record TrackInfo(int Index, int Id, string Type, string Label, bool Selected);
@@ -946,5 +968,129 @@ public partial class MainWindow : Window
                 WindowState = WindowState.Maximized;
         }
         catch { /* geometry is best-effort */ }
+    }
+
+    // ---- playlist (mirrors mpv's native playlist) -----------------------
+    //
+    // We drive mpv's real playlist with its documented commands and keep a
+    // C# ObservableCollection index-aligned with it. Only ever using
+    // replace / append / playlist-remove / playlist-clear keeps our indices
+    // equal to mpv's, and we pass numeric 0-based indices (mpv's documented
+    // base for playlist-play-index / playlist-remove) to avoid the known
+    // "playlist-remove current" off-by-one (mpv issue #10491).
+
+    private static string PlaylistDisplay(string path)
+    {
+        // Show the file name for local paths; keep URLs as-is.
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && !uri.IsFile)
+            return path;
+        try { return System.IO.Path.GetFileName(path) is { Length: > 0 } name ? name : path; }
+        catch { return path; }
+    }
+
+    /// <summary>Replace the mirrored playlist with a single entry (used by OpenPath).</summary>
+    private void SetPlaylistSingle(string path)
+    {
+        _playlist.Clear();
+        _playlist.Add(new PlaylistItem(path, PlaylistDisplay(path)));
+        SyncPlaylistSelection();
+    }
+
+    /// <summary>Append one file to both mpv's playlist and the mirror.</summary>
+    private void AppendToPlaylist(string path)
+    {
+        if (_mpv is null)
+            return;
+        // Quote for mpv's flat command syntax (paths may contain spaces).
+        _mpv.RunCommandString($"loadfile \"{path}\" append");
+        _playlist.Add(new PlaylistItem(path, PlaylistDisplay(path)));
+        if (_playlist.Count == 1)
+            SyncPlaylistSelection();
+    }
+
+    /// <summary>mpv 0-based index of the currently-playing entry, or -1.</summary>
+    private int CurrentPlaylistIndex()
+    {
+        try { return _mpv?.GetProperty<long>("playlist-pos") is long p ? (int)p : -1; }
+        catch { return -1; }
+    }
+
+    /// <summary>Move the ListBox highlight to match mpv's current entry.</summary>
+    private void SyncPlaylistSelection()
+    {
+        var idx = CurrentPlaylistIndex();
+        if (idx >= 0 && idx < _playlist.Count)
+            PlaylistList.SelectedIndex = idx;
+        else if (_playlist.Count > 0 && PlaylistList.SelectedIndex < 0)
+            PlaylistList.SelectedIndex = 0;
+    }
+
+    private void PlaylistToggle_Click(object sender, RoutedEventArgs e)
+    {
+        var show = PlaylistToggleItem.IsChecked;
+        PlaylistPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        PlaylistColumn.Width = show ? new GridLength(280, GridUnitType.Pixel) : new GridLength(0);
+    }
+
+    private void PlaylistAdd_Click(object sender, RoutedEventArgs e)
+    {
+        if (_mpv is null)
+            return;
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Multiselect = true,
+            Filter = "Media files|*.mp4;*.mkv;*.webm;*.avi;*.mov;*.wmv;*.flv;*.ts;*.m2ts;*.mpg;*.mpeg;*.m4v;*.ogv" +
+                     "|Audio files|*.mp3;*.flac;*.wav;*.m4a;*.aac;*.ogg;*.opus|All files|*.*"
+        };
+        if (dlg.ShowDialog(this) != true)
+            return;
+
+        // If nothing is playing yet, the first pick should start playback
+        // (replace); otherwise append everything.
+        if (_playlist.Count == 0 && dlg.FileNames.Length > 0)
+        {
+            OpenPath(dlg.FileNames[0]);
+            for (var i = 1; i < dlg.FileNames.Length; i++)
+                AppendToPlaylist(dlg.FileNames[i]);
+        }
+        else
+        {
+            foreach (var f in dlg.FileNames)
+                AppendToPlaylist(f);
+        }
+    }
+
+    private void PlaylistPlay_Click(object sender, RoutedEventArgs e) => PlaySelected();
+
+    private void PlaylistList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        => PlaySelected();
+
+    private void PlaySelected()
+    {
+        if (_mpv is null || PlaylistList.SelectedIndex < 0)
+            return;
+        // Numeric 0-based index — mpv's documented base for this command.
+        _mpv.RunCommandString($"playlist-play-index {PlaylistList.SelectedIndex}");
+        _stopped = false;
+    }
+
+    private void PlaylistRemove_Click(object sender, RoutedEventArgs e)
+    {
+        if (_mpv is null)
+            return;
+        var idx = PlaylistList.SelectedIndex;
+        if (idx < 0 || idx >= _playlist.Count)
+            return;
+        _mpv.RunCommandString($"playlist-remove {idx}");
+        _playlist.RemoveAt(idx);
+        SyncPlaylistSelection();
+    }
+
+    private void PlaylistClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (_mpv is null)
+            return;
+        _mpv.RunCommandString("playlist-clear");
+        _playlist.Clear();
     }
 }
