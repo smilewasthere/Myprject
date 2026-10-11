@@ -364,6 +364,10 @@ public partial class MainWindow : Window
             case Key.N when ctrl:
                 OpenNetwork_Click(this, new RoutedEventArgs());
                 break;
+            case Key.L when ctrl:
+                PlaylistToggleItem.IsChecked = !(PlaylistToggleItem.IsChecked == true);
+                PlaylistToggle_Click(this, new RoutedEventArgs());
+                break;
             case Key.Space:
                 _mpv.RunCommandString("cycle pause");
                 break;
