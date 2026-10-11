@@ -198,9 +198,12 @@ public partial class MainWindow : Window
             return;
         _lastPath = path;
         _stopped = false;
+        ResetTrackBase(); // new file → re-probe track-list indexing
         _mpv.LoadFile(path, append: false, appendPlay: false, extraArgs: null!).Invoke();
         PlayButton.IsEnabled = true;
         StopButton.IsEnabled = true;
+        PrevButton.IsEnabled = true;
+        NextButton.IsEnabled = true;
     }
 
     private void PlayPause_Click(object sender, RoutedEventArgs e) => TogglePlay();
@@ -379,9 +382,14 @@ public partial class MainWindow : Window
 
     private sealed record TrackInfo(int Index, int Id, string Type, string Label, bool Selected);
 
+    // mpv documents node-array paths as track-list/N/... but never pins down
+    // the base; resolve it once per file load by probing.
+    private int _trackBase = -1;
+
+    private void ResetTrackBase() => _trackBase = -1;
+
     /// <summary>
     /// Reads the current file's tracks straight from mpv's `track-list` node.
-    /// mpv node arrays are 1-based in property paths: track-list/1/...
     /// </summary>
     private List<TrackInfo> ReadTracks(string wantedType)
     {
@@ -389,19 +397,25 @@ public partial class MainWindow : Window
         if (_mpv is null)
             return result;
 
-        for (var i = 1; i <= 1024; i++)
+        if (_trackBase < 0)
         {
-            string? type;
-            try
-            {
-                type = _mpv.GetPropertyString($"track-list/{i}/type");
-            }
-            catch
-            {
-                break; // past the end of the list (or no file)
-            }
+            _trackBase = ProbeTrackField(0, "type") ? 0 : 1;
+            if (!ProbeTrackField(_trackBase, "type"))
+                return result; // no tracks at all
+        }
+
+        var count = ParseTrackInt("track-list/count");
+        var limit = count > 0 ? _trackBase + count : _trackBase + 1024;
+
+        for (var i = _trackBase; i < limit; i++)
+        {
+            string? type = ProbeTrackField(i, "type") ? SafeTrackString($"track-list/{i}/type") : null;
             if (string.IsNullOrEmpty(type))
-                break;
+            {
+                if (count <= 0)
+                    break; // probing mode: first gap ends the list
+                continue;
+            }
             if (!string.Equals(type, wantedType, StringComparison.OrdinalIgnoreCase))
                 continue;
 
@@ -434,6 +448,18 @@ public partial class MainWindow : Window
             result.Add(new TrackInfo(i, id, type, label, selected));
         }
         return result;
+    }
+
+    private bool ProbeTrackField(int index, string field)
+    {
+        try
+        {
+            return !string.IsNullOrEmpty(_mpv?.GetPropertyString($"track-list/{index}/{field}"));
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private int ParseTrackInt(string path)
